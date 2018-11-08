@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Teste socket</title>
+    <link rel="stylesheet" href="./assets/css/Index.css" />
+    <link rel="stylesheet" href="./assets/css/Timeline.css" />
+    <link rel="stylesheet" href="./assets/css/Tweet.css" />
+  </head>
+
+  <body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.7.5/angular.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.slim.js"></script>
+    <script>
+      (function() {
+        "use strict";
+
+        angular
+          .module("app", [])
+          .constant("baseURL", "http://localhost:3000")
+          .component("tweetList", {
+            bindings: { onchange: "=" },
+            template: `<ul class="tweet-list" ng-if="$ctrl.tweets">
+                        <li class="tweet" ng-repeat="tweet in $ctrl.tweets">
+                          <strong>{{tweet.content}}</strong>
+                          <p>{{tweet.content}}</p>
+                          <button ng-click="$ctrl.handleLike(tweet._id)" class="button">
+                            <img src="./assets/img/like.svg" alt="Like"/>
+                            {{tweet.likes}}
+                          </button>
+                        </li>
+                       </ul>`,
+            controller: function TweetListController($q, $scope, baseURL) {
+              var socket = io(baseURL);
+
+              var ctrl = this;
+              ctrl.tweets = [];
+
+              ctrl.handleLike = (_id) => { return axios.post(baseURL + `/likes/${_id}`) }
+
+              ctrl.$onInit = () => {
+                getListAll().then(({ data } = res) => (ctrl.tweets = data));
+
+                socket.on("tweet", data => {
+                  ctrl.tweets = [data, ...ctrl.tweets];
+                  $scope.$apply();
+                });
+
+                socket.on("like", data => {
+                  var tweet = ctrl.tweets.findIndex( item => item._id === data._id );
+                  ctrl.tweets[tweet] = data;
+                  $scope.$apply();
+                });
+              };
+
+              function getListAll() {
+                return $q.when(axios.get(baseURL + "/tweets"));
+              }
+            }
+          });
+      })();
+    </script>
+  </body>
+
+  <div class="timeline-wrapper" ng-app="app">
+    <tweet-list></tweet-list>
+  </div>
+</html>
